@@ -1,0 +1,81 @@
+name: Ingest
+
+on:
+  schedule:
+    - cron: '7,22,37,52 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: ingest-production
+  cancel-in-progress: false
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      PUBLIC_RUNNER: 'true'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          repository: danielrost64/odbaveno
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Write environment file
+        env:
+          TRAVELPAYOUTS_API_TOKEN: ${{ secrets.TRAVELPAYOUTS_API_TOKEN }}
+          INVIA_FEED_URL: ${{ secrets.INVIA_FEED_URL }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        run: |
+          if [ -z "$TRAVELPAYOUTS_API_TOKEN" ]; then
+            echo "Missing secret TRAVELPAYOUTS_API_TOKEN" >&2
+            exit 1
+          fi
+          {
+            echo "TRAVELPAYOUTS_API_TOKEN=${TRAVELPAYOUTS_API_TOKEN}"
+            if [ -n "$INVIA_FEED_URL" ]; then
+              echo "INVIA_FEED_URL=${INVIA_FEED_URL}"
+            fi
+            if [ -n "$PEXELS_API_KEY" ]; then
+              echo "PEXELS_API_KEY=${PEXELS_API_KEY}"
+            fi
+          } > .dev.vars
+
+      - name: Init local database
+        run: |
+          set -euo pipefail
+          npx wrangler d1 execute odbaveno --local --file=db/schema.sql >/dev/null
+
+      - name: Seed local database
+        run: |
+          set -euo pipefail
+          npm run db:seed >/dev/null
+
+      - name: Run scheduled job
+        env:
+          BASE_URL: ${{ vars.BASE_URL }}
+          INGEST_SECRET: ${{ secrets.INGEST_SECRET }}
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+        run: |
+          if [ -z "$BASE_URL" ]; then
+            echo "Missing repository variable BASE_URL" >&2
+            exit 1
+          fi
+          if [ -z "$INGEST_SECRET" ]; then
+            echo "Missing secret INGEST_SECRET" >&2
+            exit 1
+          fi
+          npm run ingest
