@@ -34,6 +34,14 @@ jobs:
       - name: Install Playwright Chromium
         run: npx playwright install --with-deps chromium
 
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Confirm ffmpeg
+        run: ffmpeg -version
+
       - name: Run scheduled job
         env:
           BASE_URL: ${{ vars.BASE_URL }}
