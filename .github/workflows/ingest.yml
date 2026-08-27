@@ -79,3 +79,5 @@ jobs:
             exit 1
           fi
           npm run ingest
+
+# nudge: re-trigger schedule evaluation 2026-08-27
