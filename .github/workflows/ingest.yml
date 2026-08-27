@@ -2,7 +2,7 @@ name: Ingest
 
 on:
   schedule:
-    - cron: '7,22,37,52 * * * *'
+    - cron: '6,21,36,51 * * * *'
   workflow_dispatch:
 
 concurrency:
@@ -79,5 +79,3 @@ jobs:
             exit 1
           fi
           npm run ingest
-
-# nudge: re-trigger schedule evaluation 2026-08-27
