@@ -4,8 +4,9 @@ on:
   workflow_run:
     workflows: ['Ingest']
     types: [completed]
-  schedule:
-    - cron: '59 4 * * *'
+  # Disabled 2026-09-02: cron-job.org confirmed reliable over a 72h+ measurement window (286/288 ingest dispatches on spec, 3/3 daily jobs). The native schedule was firing independently (not as a dead fallback) and adding real extra executions against D1/KV free-tier caps — concurrency: cancel-in-progress: false means overlapping schedule fires queue and still run, they don't get dropped.
+  # schedule:
+  #   - cron: '59 4 * * *'
   workflow_dispatch:
     inputs:
       job:
